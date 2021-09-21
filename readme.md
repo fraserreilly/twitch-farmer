@@ -1,11 +1,11 @@
-# twitch-subscription-farmer
+# twitch-farmer
 
 ## About
 Node.js application that allows you to farm channels for gifted subs
 
 ## Installation
 
-1. Check out twitch-subscription-farmer to your desired directory
+1. Check out twitch-farmer to your desired directory
 ```
 $ git clone https://github.com/fraserreilly/twitch-farmer your_directory
 ```
