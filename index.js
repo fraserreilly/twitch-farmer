@@ -138,11 +138,12 @@ function onConnectedHandler (addr, port) {
 }
 
 async function removeInactiveChannels() {
+    const userLogins = Array.from(currentlyConnected)
     const response = await axios.get(`${config.twitchAPI}streams`, {
         params: {
             cursor: "",
             first: 100,
-            user_login: Array.from(currentlyConnected)
+            user_login: userLogins
         },
     headers: {
         "Authorization": `Bearer ${process.env.BEARER}`,
@@ -152,7 +153,7 @@ async function removeInactiveChannels() {
         console.log(e.response);
     })
     for (let user in response.data.data) {
-        if (response.data.data[user].user_login in Array.from(currentlyConnected)) {
+        if (response.data.data[user].user_login in userLogins) {
             break;
         }
         userIDs.add(response.data.data[user].user_login)
