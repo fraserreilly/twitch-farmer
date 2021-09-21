@@ -161,8 +161,8 @@ async function removeInactiveChannels() {
     }
 }
 async function updateChannels() {
-    await removeInactiveChannels();
     const channels = Array.from(await getChannels());
+    await removeInactiveChannels();
     for (let user in channels) {
         if (currentlyConnected.size < config.maxChannels) {
             client.join(channels[user]);
