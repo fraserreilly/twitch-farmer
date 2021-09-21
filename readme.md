@@ -40,7 +40,7 @@ Examples of games and channels:
 ```
 channels = ["sodapoppin", "tfue", "loltyler1"] **make sure that these names are lowercase**
 games = ["VALORANT", "Just Chatting", "League of Legends"] **make sure this is the full name of the game**
-
+```
 ### Running the application
 To run the application open the start.bat file or execute:
 ```
