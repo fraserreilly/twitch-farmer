@@ -156,6 +156,8 @@ async function removeInactiveChannels() {
             break;
         }
         userIDs.delete(response.data.data[user].user_login)
+        currentlyConnected.delete(response.data.data[user].user_login)
+        client.part(response.data.data[user].user_login)
     }
 }
 async function updateChannels() {
