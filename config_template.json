@@ -1,0 +1,10 @@
+{
+    "nick": "Enter your twitch name here in lower case",
+    "maxChannels": 100,
+    "twitchAPI": "https://api.twitch.tv/helix/",
+    "watchFollowed": false,
+    "channels": [],
+    "games": [],
+    "minViewers": 3000,
+    "maxViewers": 10000000
+}

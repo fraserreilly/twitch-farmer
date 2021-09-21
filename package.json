@@ -1,0 +1,27 @@
+{
+  "name": "twitch-farmer",
+  "version": "1.0.0",
+  "description": "AFK in twitch channels via twitch irc to hopefully gain gifted subs.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fraserreilly/twitch-farmer.git"
+  },
+  "keywords": [
+    "twitch"
+  ],
+  "author": "Fraser",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/fraserreilly/twitch-farmer/issues"
+  },
+  "homepage": "https://github.com/fraserreilly/twitch-farmer#readme",
+  "dependencies": {
+    "axios": "^0.21.4",
+    "dotenv": "^10.0.0",
+    "tmi.js": "^1.8.5"
+  }
+}
