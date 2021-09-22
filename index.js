@@ -17,8 +17,6 @@ const client = new tmi.Client({
 	channels: []
 });
 
-client.log.setLevel('warn');
-
 async function getPersonalUserID(){
     response = await axios.get(`${config.twitchAPI}users`, {
         params: {
@@ -36,6 +34,10 @@ async function getPersonalUserID(){
 }
 
 async function getChannels() {
+    var params = {
+        after: "",
+        first: 100
+    }
     if (config.watchFollowed === true) {
         const userID = await getPersonalUserID();
         const response = await axios.get(`${config.twitchAPI}streams/followed`, {
@@ -73,10 +75,6 @@ async function getChannels() {
             userIDs.add(response.data.data[user].user_login)
         }
     }
-    const params = {
-        after: "",
-        first: 100
-    }
     if (config.games.length > 0) {
         const gamesList = []
         const response = await axios.get(`${config.twitchAPI}games`, {
@@ -98,24 +96,25 @@ async function getChannels() {
             }
         params["game_id"] = gamesList
     }
-
-    const response = await axios.get(`${config.twitchAPI}streams`, {
-        params: params,
-        headers: {
-            "Authorization": `Bearer ${process.env.BEARER}`,
-            "Client-Id": `${process.env.CLIENT_ID}`
-        }})
-    .catch(function (e) {
-        console.log(e.response);
-    })
-    for (let user in response.data.data) {
-        if (response.data.data[user].viewer_count <= config.minViewers || response.data.data[user].viewer_count >= config.maxViewers || response.data.data[user].user_login === undefined) {
-            break;
+    var i = userIDs.size
+    while (i < config.maxChannels) {
+        const response = await axios.get(`${config.twitchAPI}streams`, {
+            params: params,
+            headers: {
+                "Authorization": `Bearer ${process.env.BEARER}`,
+                "Client-Id": `${process.env.CLIENT_ID}`
+            }})
+        .catch(function (e) {
+            console.log(e.response);
+        })
+        i += response.data.data.length+1;
+        for (let user in response.data.data) {
+            if (response.data.data[user].viewer_count <= config.minViewers || response.data.data[user].viewer_count >= config.maxViewers || response.data.data[user].user_login === undefined) {
+                break;
+            }
+            userIDs.add(response.data.data[user].user_login)
         }
-        userIDs.add(response.data.data[user].user_login)
-    }
-    if (userIDs.size > config.maxChannels) {
-        userIDs.size = config.maxChannels
+        params["after"] = response.data.pagination.cursor
     }
     return userIDs
 }
@@ -142,25 +141,28 @@ function onConnectedHandler (addr, port) {
 
 async function removeInactiveChannels() {
     const active = []
-    const response = await axios.get(`${config.twitchAPI}streams`, {
-        params: {
-            after: "",
-            first: 100,
-            user_login: currentlyConnectedArray
-        },
-    headers: {
-        "Authorization": `Bearer ${process.env.BEARER}`,
-        "Client-Id": `${process.env.CLIENT_ID}`
-    }})
-    .catch(function (e) {
-        console.log(e.response);
-    })
-    for (let user in response.data.data) {
-        if (response.data.data[user].user_login in currentlyConnectedArray) {
-            break;
-        } else {
-            active.push(response.data.data[user].user_login)
+    for (let i; i < currentlyConnected.size; i+100) {
+        var response = await axios.get(`${config.twitchAPI}streams`, {
+            params: {
+                after: "",
+                first: 100,
+                user_login: currentlyConnectedArray
+            },
+        headers: {
+            "Authorization": `Bearer ${process.env.BEARER}`,
+            "Client-Id": `${process.env.CLIENT_ID}`
+        }})
+        .catch(function (e) {
+            console.log(e.response);
+        })
+        for (let user in response.data.data) {
+            if (response.data.data[user].user_login in currentlyConnectedArray) {
+                break;
+            } else {
+                active.push(response.data.data[user].user_login)
+            }
         }
+        params["after"] = response.data.pagination.cursor
     }
     for (let user in currentlyConnectedArray) {
         if (active.indexOf(currentlyConnectedArray[user]) === -1) {
@@ -182,7 +184,7 @@ async function updateChannels() {
             console.log(`${config.nick} successfully joined ${channels[user]}'s stream`);
             await sleep(1000);
         } else {
-            console.log(`${config.nick} already connected to ${currentlyConnected.size} streams, sleeping`);
+            console.log(`${config.nick} connected to ${currentlyConnected.size} streams, sleeping`);
             return;
         }
     }
