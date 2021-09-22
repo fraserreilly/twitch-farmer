@@ -96,7 +96,7 @@ async function getChannels() {
             }
         params["game_id"] = gamesList
     }
-    var i = userIDs.size
+    var i = currentlyConnected.size
     while (i < config.maxChannels) {
         const response = await axios.get(`${config.twitchAPI}streams`, {
             params: params,
@@ -107,7 +107,7 @@ async function getChannels() {
         .catch(function (e) {
             console.log(e.response);
         })
-        i += response.data.data.length+1;
+        i += response.data.data.length
         for (let user in response.data.data) {
             if (response.data.data[user].viewer_count <= config.minViewers || response.data.data[user].viewer_count >= config.maxViewers || response.data.data[user].user_login === undefined) {
                 break;
@@ -178,7 +178,7 @@ async function updateChannels() {
     await removeInactiveChannels();
     const channels = Array.from(await getChannels());
     for (let user in channels) {
-        if (currentlyConnected.size < config.maxChannels && currentlyConnectedArray.indexOf(channels[user]) === -1) {
+        if (currentlyConnected.size < config.maxChannels && !currentlyConnected.has(channels[user])) {
             client.join(channels[user]);
             currentlyConnected.add(channels[user]);
             console.log(`${config.nick} successfully joined ${channels[user]}'s stream`);
@@ -195,7 +195,7 @@ function sleep(ms) {
 }
 
 async function run() {
-    joinChannels();
+    await joinChannels();
     while (true) {
         await sleep(1200000);
         updateChannels();
