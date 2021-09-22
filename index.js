@@ -198,7 +198,7 @@ async function run() {
     await joinChannels();
     while (true) {
         await sleep(1200000);
-        updateChannels();
+        await updateChannels();
     }
 }
 
