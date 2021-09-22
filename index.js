@@ -178,15 +178,15 @@ async function updateChannels() {
     await removeInactiveChannels();
     const channels = Array.from(await getChannels());
     for (let user in channels) {
-        if (currentlyConnected.size < config.maxChannels && !currentlyConnected.has(channels[user])) {
-            client.join(channels[user]);
-            currentlyConnected.add(channels[user]);
-            console.log(`${config.nick} successfully joined ${channels[user]}'s stream`);
-            await sleep(1000);
-        } else {
-            console.log(`${config.nick} connected to ${currentlyConnected.size} streams, sleeping`);
-            return;
+        while (currentlyConnected.size < config.maxChannels) {
+            if (!currentlyConnected.has(channels[user]))
+                client.join(channels[user]);
+                currentlyConnected.add(channels[user]);
+                console.log(`${config.nick} successfully joined ${channels[user]}'s stream`);
+                await sleep(1000);
         }
+        console.log(`${config.nick} connected to ${currentlyConnected.size} streams, sleeping`);
+        return;
     }
 }
 
