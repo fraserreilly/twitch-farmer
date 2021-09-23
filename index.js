@@ -5,7 +5,6 @@ const tmi = require("tmi.js");
 const axios = require("axios");
 
 const currentlyConnected = new Set();
-const currentlyConnectedArray = Array.from(currentlyConnected);
 const userIDs = new Set();
 
 const client = new tmi.Client({
@@ -141,13 +140,14 @@ function onConnectedHandler (addr, port) {
 
 async function removeInactiveChannels() {
     const active = []
-    for (let i; i < currentlyConnected.size; i+100) {
-        var response = await axios.get(`${config.twitchAPI}streams`, {
-            params: {
-                after: "",
-                first: 100,
-                user_login: currentlyConnectedArray
-            },
+    for (let i = 0; i < currentlyConnected.size; i+=100) {
+        var params = {
+            after: "",
+            first: 100,
+            user_login: Array.from(currentlyConnected).slice(i, i+=100)
+        }
+        const response = await axios.get(`${config.twitchAPI}streams`, {
+            params: params,
         headers: {
             "Authorization": `Bearer ${process.env.BEARER}`,
             "Client-Id": `${process.env.CLIENT_ID}`
@@ -156,20 +156,21 @@ async function removeInactiveChannels() {
             console.log(e.response);
         })
         for (let user in response.data.data) {
-            if (response.data.data[user].user_login in currentlyConnectedArray) {
-                break;
-            } else {
+            if (currentlyConnected.has(response.data.data[user].user_login)) {
                 active.push(response.data.data[user].user_login)
             }
         }
         params["after"] = response.data.pagination.cursor
     }
-    for (let user in currentlyConnectedArray) {
-        if (active.indexOf(currentlyConnectedArray[user]) === -1) {
-            userIDs.delete(currentlyConnectedArray[user])
-            currentlyConnected.delete(currentlyConnectedArray[user])
-            client.part(currentlyConnectedArray[user])
-            console.log(`${config.nick} successfully left ${currentlyConnectedArray[user]}'s stream`)
+    for (let user in Array.from(currentlyConnected)) {
+        if (Array.from(currentlyConnected)[user] === undefined) {
+            break
+        }
+        if (active.indexOf(Array.from(currentlyConnected)[user]) === -1) {
+            userIDs.delete(Array.from(currentlyConnected)[user])
+            currentlyConnected.delete(Array.from(currentlyConnected)[user])
+            client.part(Array.from(currentlyConnected)[user])
+            console.log(`${config.nick} successfully left ${Array.from(currentlyConnected)[user]}'s stream`)
             await sleep(1000);
         }
     }
@@ -178,7 +179,7 @@ async function updateChannels() {
     await removeInactiveChannels();
     const channels = Array.from(await getChannels());
     for (let user in channels) {
-        while (currentlyConnected.size < config.maxChannels) {
+        if (currentlyConnected.size < config.maxChannels) {
             if (!currentlyConnected.has(channels[user]))
                 client.join(channels[user]);
                 currentlyConnected.add(channels[user]);
