@@ -6,15 +6,62 @@ const axios = require("axios");
 
 const currentlyConnected = new Set();
 const userIDs = new Set();
+const subscribed = new Set();
+const banned = new Set();
 
 const client = new tmi.Client({
-	options: { debug: false },
+    connection: {
+		reconnect: true,
+		secure: true
+	},
 	identity: {
 		username: config.nick,
 		password: process.env.TWITCHOAUTH
 	},
 	channels: []
 });
+
+client.on("join", (channel, username, self) => {
+    if (self && !currentlyConnected.has(channel)) {
+    currentlyConnected.add(channel.slice(1));
+    console.log(`${config.nick} successfully joined ${channel.slice(1)}'s stream`);
+    }
+})
+
+client.on('part', (channel, username, self) => {
+    if (self) {
+        currentlyConnected.delete(channel.slice(1));
+        userIDs.delete(channel.slice(1));
+        console.log(`${config.nick} successfully left ${channel.slice(1)}'s stream`);
+    }
+})
+client.on('disconnected', () => {
+    currentlyConnected.clear();
+    userIDs.clear();
+});
+
+client.on("subgift", (channel, username, _, recipient) => {
+    if (recipient === config.nick) {
+        console.log(`received a subscription gift from user "${username}" in channel "${channel.slice(1)}"`);
+        subscribed.add(channel.slice(1))
+    }
+});
+
+client.on("ban", (channel, username, reason, userstate) => {
+    if(username == config.nick) {
+        console.log(`${config.nick} is banned in ${channel}`);
+        currentlyConnected.delete(channel.slice(1));
+        userIDs.delete(channel.slice(1));
+    }
+});
+
+client.on("reconnect", () => {
+    console.log(`Trying to reconnect to the twitch server...`);
+});
+
+function onConnectedHandler (addr, port) {
+    console.log(`${config.nick} connected to ${addr}:${port}`);
+}
 
 async function getPersonalUserID(){
     response = await axios.get(`${config.twitchAPI}users`, {
@@ -115,27 +162,35 @@ async function getChannels() {
         }
         params["after"] = response.data.pagination.cursor
     }
+    userIDs.forEach((user => {
+        if(subscribed.has(user)) {
+            userIDs.delete(user)
+            console.log(`already subscribed to ${user}, removing from queue`)
+        }
+        if(banned.has(user)) {
+            userIDs.delete(user);
+            console.log(`banned in ${user}'s channel, skipping`);
+        }
+    }))
+    // for some reason javascript doesn't allow sets to be assigned a new size so this is the temporary solution until it changes
+    if (userIDs.size > config.maxChannels) {
+        const temp = Array.from(userIDs)
+        temp.length = config.maxChannels
+        const fixedLengthUserIDs = new Set(temp);
+        return fixedLengthUserIDs
+    }
     return userIDs
 }
 
 async function joinChannels(){
     client.on("connected", onConnectedHandler);
     await client.connect()
-    const channels = Array.from(await getChannels());
-    if (channels.length > config.maxChannels) {
-        channels.length = config.maxChannels
+    const channels = await getChannels();
+    console.log(`connecting to ${channels.size} channels`);
+    for (let user of channels) {
+        client.join(user);
+        await sleep(1000)
     }
-    console.log(`connecting to ${channels.length} channels`)
-    for (let user in channels) {
-            client.join(channels[user]);
-            console.log(`${config.nick} successfully joined ${channels[user]}'s stream`);
-            currentlyConnected.add(channels[user]);
-            await sleep(1000);
-    }
-}
-
-function onConnectedHandler (addr, port) {
-    console.log(`${config.nick} connected to ${addr}:${port}`);
 }
 
 async function removeInactiveChannels() {
@@ -162,32 +217,25 @@ async function removeInactiveChannels() {
         }
         params["after"] = response.data.pagination.cursor
     }
-    for (let user in Array.from(currentlyConnected)) {
-        if (Array.from(currentlyConnected)[user] === undefined) {
-            break
-        }
-        if (active.indexOf(Array.from(currentlyConnected)[user]) === -1) {
-            userIDs.delete(Array.from(currentlyConnected)[user])
-            currentlyConnected.delete(Array.from(currentlyConnected)[user])
-            client.part(Array.from(currentlyConnected)[user])
-            console.log(`${config.nick} successfully left ${Array.from(currentlyConnected)[user]}'s stream`)
+    for (let user of currentlyConnected) {
+        if (!active.includes(user, 0)) {
+            client.part(user);
             await sleep(1000);
         }
     }
 }
 async function updateChannels() {
     await removeInactiveChannels();
-    const channels = Array.from(await getChannels());
-    for (let user in channels) {
-        if (currentlyConnected.size < config.maxChannels) {
-            if (!currentlyConnected.has(channels[user]))
-                client.join(channels[user]);
-                currentlyConnected.add(channels[user]);
-                console.log(`${config.nick} successfully joined ${channels[user]}'s stream`);
-                await sleep(1000);
+    const channels = await getChannels();
+    for (let user of channels) {
+        if (currentlyConnected.size > config.maxChannels) {
+            console.log(`${config.nick} connected to ${currentlyConnected.size} streams which is the maximum available, sleeping`);
+            return; 
+        } else if (!currentlyConnected.has(user)) {
+            client.join(user);
+            currentlyConnected.add(user);
+            await sleep(1000);
         }
-        console.log(`${config.nick} connected to ${currentlyConnected.size} streams, sleeping`);
-        return;
     }
 }
 
