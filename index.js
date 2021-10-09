@@ -21,14 +21,14 @@ const client = new tmi.Client({
 	channels: []
 });
 
-client.on("join", (channel, username, self) => {
+client.on("join", (channel, _, self) => {
     if (self && !currentlyConnected.has(channel)) {
     currentlyConnected.add(channel.slice(1));
     console.log(`${config.nick} successfully joined ${channel.slice(1)}'s stream`);
     }
 })
 
-client.on('part', (channel, username, self) => {
+client.on('part', (channel, _, self) => {
     if (self) {
         currentlyConnected.delete(channel.slice(1));
         userIDs.delete(channel.slice(1));
@@ -38,6 +38,7 @@ client.on('part', (channel, username, self) => {
 client.on('disconnected', () => {
     currentlyConnected.clear();
     userIDs.clear();
+    console.log("disconnected from twitch server...")
 });
 
 client.on("subgift", (channel, username, _, recipient) => {
@@ -47,7 +48,7 @@ client.on("subgift", (channel, username, _, recipient) => {
     }
 });
 
-client.on("ban", (channel, username, reason, userstate) => {
+client.on("ban", (channel, username, _, __) => {
     if(username == config.nick) {
         console.log(`${config.nick} is banned in ${channel}`);
         currentlyConnected.delete(channel.slice(1));
@@ -56,7 +57,7 @@ client.on("ban", (channel, username, reason, userstate) => {
 });
 
 client.on("reconnect", () => {
-    console.log(`Trying to reconnect to the twitch server...`);
+    console.log(`trying to reconnect to the twitch server...`);
 });
 
 function onConnectedHandler (addr, port) {
